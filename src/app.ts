@@ -1,4 +1,5 @@
-import express from 'express';
+// @ts-ignore
+import express from '@swizzyweb/express';
 import { SwizzyDynServeService } from './web-service';
 const PORT = process.env.port ?? 3005;
 const app = express();

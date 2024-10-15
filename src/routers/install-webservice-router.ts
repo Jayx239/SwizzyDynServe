@@ -1,10 +1,11 @@
 import axios from 'axios';
-import {Request, Response, Router, json} from 'express'; 
+// @ts-ignore
+import {Request, Response, Router, json} from '@swizzyweb/express'; 
 import { fstat, write } from 'fs';
 import { mkdir, open, writeFile } from 'fs/promises';
 import path from 'path';
-import { IWebService } from 'swizzy-web-service';
-import { BrowserLogger, ILogger } from '../../../SwizzyCommon/dist';
+import { IWebService } from '@swizzyweb/swizzy-web-service';
+import { BrowserLogger, ILogger } from '@swizzyweb/swizzy-common';
 
 const WEB_SERVICE_LOCAL_REPO_PATH = path.join("./","local/repo/services");
 const logger: ILogger = new BrowserLogger();

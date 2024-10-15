@@ -1,5 +1,5 @@
 import { exec } from "child_process";
-import { BrowserLogger, ILogger } from "../../SwizzyCommon/dist";
+import { BrowserLogger, ILogger } from "@swizzyweb/swizzy-common";
 
 const logger: ILogger = new BrowserLogger();
 const SLEEP_INTERVAL = 2000;
@@ -19,7 +19,7 @@ export async function npmLinkInstall(props: INpmLinkInstallProps): Promise<IInst
 	return await install(packageName, LINK_COMMAND);
 }
 
-const INSTALL_COMMAND = "npm install ";
+const INSTALL_COMMAND = "npm install --registry http://localhost:4873 ";
 export async function npmInstall(props: INpmLinkInstallProps) {
     const {packageName} = props;
 	validatePackageName(packageName);

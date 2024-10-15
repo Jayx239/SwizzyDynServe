@@ -1,8 +1,9 @@
-import {Request, Response, Router, json} from 'express'; 
+// @ts-ignore
+import {Request, Response, Router, json} from '@swizzyweb/express'; 
 import path from 'path';
-import { IWebService } from 'swizzy-web-service';
-import { BrowserLogger, ILogger } from '../../../SwizzyCommon/dist';
-import { npmLinkInstall } from '../npm-installer';
+import { IWebService } from '@swizzyweb/swizzy-web-service';
+import { BrowserLogger, ILogger } from '@swizzyweb/swizzy-common';
+import { npmInstall, npmLinkInstall } from '../npm-installer';
 import { validatePackageName } from '../npm-installer';
 
 const logger: ILogger = new BrowserLogger();
@@ -38,8 +39,9 @@ router.post(`${BASE_PATH}/install`, async (req: Request, res: Response) => {
 	return;
   }
     try {
-      await npmLinkInstall({packageName: toolName});
-      logger.info(`Successfully installed package ${toolName}`);
+      //await npmLinkInstall({packageName: toolName});
+      	await npmInstall({packageName: toolName });
+		logger.info(`Successfully installed package ${toolName}`);
       res.status(200).send();
     } catch(e) {
       logger.error(`Error occurred installing npm package ${toolName} with exception ${e}`);

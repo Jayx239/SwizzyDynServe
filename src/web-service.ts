@@ -1,6 +1,6 @@
-
-import { Application } from "express";
-import { IRunProps, IRunResult, IWebService, WebService } from "swizzy-web-service";
+// @ts-ignore
+import { Application } from "@swizzyweb/express";
+import { IRunProps, IRunResult, IWebService, WebService } from "@swizzyweb/swizzy-web-service";
 // import { router } from "./routers/install-webservice-router";
 import { router } from "./routers/install-webservice-npm-router";
 
