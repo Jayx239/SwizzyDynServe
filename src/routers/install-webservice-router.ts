@@ -84,7 +84,7 @@ async function writeWebServiceToRepo(toolName: string, content: string) {
 const runningServices: Map<string, IWebService> = new Map();
 
 // define the about route
-router.get('/run', async (req: Request, res: Response) => {
+router.post('/run', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {
@@ -106,7 +106,7 @@ router.get('/run', async (req: Request, res: Response) => {
   res.status(200).send();
 });
 
-router.get('/stop', async (req: Request, res: Response) => {
+router.post('/stop', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {
@@ -138,7 +138,7 @@ router.get('/available/services', (req: Request, res: Response) => {
 
 
 // With NPM
-router.get('/runNpm', async (req: Request, res: Response) => {
+router.post('/runNpm', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {

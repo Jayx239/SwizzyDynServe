@@ -2,32 +2,71 @@ import { exec } from "child_process";
 import { BrowserLogger, ILogger } from "@swizzyweb/swizzy-common";
 
 const logger: ILogger = new BrowserLogger();
-const SLEEP_INTERVAL = 2000;
+const SLEEP_INTERVAL = 500;
 
+export enum SaveOption {
+	none = '--no-save',
+	save = '--save',
+	optional = '--save-optional',
+	default = '--save-optional',
+	dev = '--save-dev',
+	prod = '--save-prod',
+	peer = '--save-peer',
+	bundle = '--save-bundle',
 
-export interface INpmLinkInstallProps {
+};
+
+/*const SAVE_OPTIONS = new Map([
+	none: '--no-save',
+	save: '--save',
+	optional: '--save-optional',
+	default: '--no-save',
+	dev: '--save-dev',
+	prod: '--save-prod',
+	peer: '--save-peer',
+	bundle: '--save-bundle',
+
+])
+
+const SAVE_OPTIONS = {
+	none: '--no-save',
+	save: '--save',
+	optional: '--save-optional',
+	default: '--no-save',
+	dev: '--save-dev',
+	prod: '--save-prod',
+	peer: '--save-peer',
+	bundle: '--save-bundle',
+};
+*/
+
+export interface INpmInstallProps {
     packageName: string;
+	saveOption?: SaveOption;
 }
 
 export interface IInstallResult {
     success: boolean;
 }
 const LINK_COMMAND = "npm link ";
-export async function npmLinkInstall(props: INpmLinkInstallProps): Promise<IInstallResult> {
-   const { packageName } = props;
+export async function npmLinkInstall(props: INpmInstallProps): Promise<IInstallResult> {
+   const { packageName, saveOption } = props;
+   const actualSaveOption = saveOption??SaveOption.default;
+
    validatePackageName(packageName);
-	return await install(packageName, LINK_COMMAND);
+   return await install(packageName, LINK_COMMAND, actualSaveOption);
 }
 
-const INSTALL_COMMAND = "npm install --registry http://localhost:4873 ";
-export async function npmInstall(props: INpmLinkInstallProps) {
-    const {packageName} = props;
+const INSTALL_COMMAND = "npm install --registry http://localhost:4873 "; // TODO: should we save it?
+export async function npmInstall(props: INpmInstallProps) {
+    const { packageName, saveOption } = props;
+	const actualSaveOption = saveOption??SaveOption.default;
 	validatePackageName(packageName);
-    return await install(packageName, INSTALL_COMMAND);
+    return await install(packageName, INSTALL_COMMAND, actualSaveOption);
 }
 
-async function install(packageName: string, command: string): Promise<IInstallResult> {
-    let a = exec(`${command} ${packageName}`, (err, stdout, stderr) => {
+async function install(packageName: string, command: string, saveOption: SaveOption): Promise<IInstallResult> {
+    let a = exec(`${command} ${saveOption} ${packageName}`, (err, stdout, stderr) => {
         if(err) {
             logger.error(`Error: ${err}`);
         }
@@ -47,7 +86,7 @@ async function install(packageName: string, command: string): Promise<IInstallRe
     console.log(a.exitCode);
     
 
-    return Promise.resolve({success: true});
+    return Promise.resolve({success: a.exitCode === 0});
 }
 
 function sleep(ms: number) {
