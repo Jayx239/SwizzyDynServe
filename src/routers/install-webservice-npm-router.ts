@@ -1,23 +1,27 @@
-import {Request, Response, Router, json} from 'express'; 
+// @ts-ignore
+import {Request, Response, Router, json} from '@swizzyweb/express'; 
 import path from 'path';
-import { IWebService } from 'swizzy-web-service';
-import { BrowserLogger, ILogger } from '../../../SwizzyCommon/dist';
-import { npmLinkInstall } from '../npm-installer';
+import { IWebService } from '@swizzyweb/swizzy-web-service';
+import { BrowserLogger, ILogger } from '@swizzyweb/swizzy-common';
+import { npmInstall, npmLinkInstall } from '../npm-installer';
 import { validatePackageName } from '../npm-installer';
+import { AppAttachMode, IDynServeBaseRunRequestBody, IDynServeWebServiceRunRequestBody } from '../model/run-request-body';
 
 const logger: ILogger = new BrowserLogger();
 
 export const router = Router({});
-const BASE_PATH = '/v1/manage';
+const BASE_PATH = '/v1/webservice';
 const FILE_NAME = "app.js";
 // middleware that is specific to this router
 const timeLog = (req: Request, res: Response, next: ()=>void) => {
-  console.log('Time: ', Date.now())
+  logger.log(`Time: ${new Date().toUTCString()}`);
   next()
 }
 
 router.use(timeLog);
 router.use(json());
+
+const runningServices: any = {}; //Map<string, IWebService> = new Map<string, IWebService>();
 
 interface InstallParams {
   toolName: string;
@@ -27,36 +31,40 @@ interface InstallParams {
 // define the home page route
 router.post(`${BASE_PATH}/install`, async (req: Request, res: Response) => {
     // Use link since we are using local packages
-    const { toolName } = req.body;
-      logger.info(`Request to install tool: ${toolName}`);
+    const { serviceName } = req.query;
+      logger.info(`Request to install service: ${serviceName}`);
   try {
-  	validatePackageName(toolName as string);
-  	logger.info(`ToolName validated`);
+  	validatePackageName(serviceName as string);
+  	logger.info(`serviceName validated`);
   } catch(e) {
 	logger.error(`Invalid package name when attempting to install exception: ${e}`);
 	res.status(403).send();
 	return;
   }
     try {
-      await npmLinkInstall({packageName: toolName});
-      logger.info(`Successfully installed package ${toolName}`);
+      //await npmLinkInstall({packageName: serviceName});
+		//
+      	const result = await npmInstall({packageName: serviceName });
+		if (!result.success) {
+			throw new Error(`Install service ${serviceName} failed`);
+		}
+		logger.info(`Successfully installed package ${serviceName}`);
       res.status(200).send();
     } catch(e) {
-      logger.error(`Error occurred installing npm package ${toolName} with exception ${e}`);
+      logger.error(`Error occurred installing npm package ${serviceName} with exception ${e}`);
       res.status(500).send();
     }
 });
 
 
-const runningServices: Map<string, IWebService> = new Map();
-
 // With NPM
-router.get(`${BASE_PATH}/run`, async (req: Request, res: Response) => {
-  const {toolName} = req.query;
-  logger.info(`Request to run tool: ${toolName}`);
+router.post(`${BASE_PATH}/run`, async (req: Request, res: Response) => {
+  const {serviceName} = req.query;
+
+  logger.info(`Request to run service: ${serviceName}`);
   try {
-  	validatePackageName(toolName as string);
-  	logger.info(`ToolName validated`);
+  	validatePackageName(serviceName as string);
+  	logger.info(`serviceName validated`);
   } catch(e) {
 	logger.error(`Invalid package name when attempting to run exception: ${e}`);
 	res.status(403).send();
@@ -64,29 +72,42 @@ router.get(`${BASE_PATH}/run`, async (req: Request, res: Response) => {
   }
 
   try {
+  	logger.info(`Body ${req.body}`);
+  	  const runArgs: IDynServeWebServiceRunRequestBody<any>= req.body?.runArgs??{
+  	expressConfiguration: {
+		app: {
+  			attachMode: AppAttachMode.parentApp,
+  		}
+	},
+	serviceArgs: {}
+  };
+  // TODO: validate
     // const toolPath = path.join(`${WEB_SERVICE_LOCAL_REPO_PATH}/${toolName}/${FILE_NAME}`);
     // logger.info(`Toolpath to require: ${toolPath}`);
     // const tool = require(`../../local/repo/services/MyFirstWebService/app.js`);
     // const toolPath = path.join(`../../local/repo/services/${toolName}/${FILE_NAME}`);
-    const tool = require(toolName as string);
-    let webService = tool.getWebservice();
-    await webService.install({app: req.app, logger});
-    runningServices.set(toolName as string, webService);
+    const tool = require(serviceName as string);
+	const serviceApp = runArgs.expressConfiguration?.app.port ? undefined : req.app;//.//runArgs?.expressConfiguration?.app?.attachMode === AppAttachMode.parentApp ? req.app : undefined;
+	logger.info(`App in controller: ${req.app}`);
+    let webService = tool.getWebservice({...(runArgs?.serviceArgs??{}), app: serviceApp, logger, port: runArgs?.expressConfiguration?.app?.port });
+    await webService.install({}/*{app: req.app, logger}*/);
+    runningServices[serviceName as string] = webService;
     // tool.install({app: req.app});
-    logger.info(`Started running tool: ${toolName}`);
+    logger.info(`Started running service: ${serviceName}`);
   } catch(e) {
-    logger.error(`Error running service: ${toolName}, e: ${e}`);
+    logger.error(`Error running service: ${serviceName}, e: ${JSON.stringify(e)}`);
     res.status(500).send();
+	return;
   }
   
   res.status(200).send();
 });
 
-router.get(`${BASE_PATH}/stop`, async (req: Request, res: Response) => {
-  const {toolName} = req.query;
-  logger.info(`Request to stop running tool: ${toolName}`);
+router.post(`${BASE_PATH}/stop`, async (req: Request, res: Response) => {
+  const {serviceName} = req.query;
+  logger.info(`Request to stop running tool: ${serviceName}`);
   try {
-  	validatePackageName(toolName as string);
+  	validatePackageName(serviceName as string);
   	logger.info(`ToolName validated`);
   } catch(e) {
 	logger.error(`Invalid package name when attempting to stop exception: ${e}`);
@@ -95,27 +116,29 @@ router.get(`${BASE_PATH}/stop`, async (req: Request, res: Response) => {
   } 
   try {
 
-    if(!runningServices.has(toolName as string)) {
-      logger.error(`Unable to stop running service ${toolName} as it is not in available services`);
+    if(!runningServices[serviceName as string]) {
+      logger.error(`Unable to stop running service ${serviceName} as it is not in available services`);
       res.status(404).send();
       return;
     }
     // const toolPath = path.join(`../../local/repo/services/${toolName}/${FILE_NAME}`);
-    const webService = runningServices.get(toolName as string)!;
+    const webService = runningServices[serviceName as string]!;
     //logger.info(`Routes: ${req.app}`);
-    await webService.uninstall({app: req.app});
-    runningServices.delete(toolName as string);
-    delete require.cache[require.resolve(toolName as string)];
+    await webService.uninstall({}/*{app: req.app}*/);
+	delete runningServices[serviceName as string];
+    delete require.cache[require.resolve(serviceName as string)];
     // TODO: Should we do NPM uninstall during this step? Maybe an uninstall controller makes sense.
-    logger.info(`Stopped running tool: ${toolName}`);
+    logger.info(`Stopped running tool: ${serviceName}`);
   } catch(e) {
-    logger.error(`Error stopping service: ${toolName}, e: ${e}`);
+    logger.error(`Error stopping service: ${serviceName}, e: ${e}`);
     res.status(500).send();
   }
   
   res.status(200).send();
 });
 
-router.get(`${BASE_PATH}/available/services`, (req: Request, res: Response) => {
+router.get(`${BASE_PATH}/running/list`, (req: Request, res: Response) => {
+	logger.info("Listing web services");
+	logger.debug(`Web services: ${JSON.stringify(runningServices)}`);
   res.status(200).json({services: runningServices});
 });

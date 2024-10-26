@@ -1,10 +1,11 @@
 import axios from 'axios';
-import {Request, Response, Router, json} from 'express'; 
+// @ts-ignore
+import {Request, Response, Router, json} from '@swizzyweb/express'; 
 import { fstat, write } from 'fs';
 import { mkdir, open, writeFile } from 'fs/promises';
 import path from 'path';
-import { IWebService } from 'swizzy-web-service';
-import { BrowserLogger, ILogger } from '../../../SwizzyCommon/dist';
+import { IWebService } from '@swizzyweb/swizzy-web-service';
+import { BrowserLogger, ILogger } from '@swizzyweb/swizzy-common';
 
 const WEB_SERVICE_LOCAL_REPO_PATH = path.join("./","local/repo/services");
 const logger: ILogger = new BrowserLogger();
@@ -83,7 +84,7 @@ async function writeWebServiceToRepo(toolName: string, content: string) {
 const runningServices: Map<string, IWebService> = new Map();
 
 // define the about route
-router.get('/run', async (req: Request, res: Response) => {
+router.post('/run', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {
@@ -105,7 +106,7 @@ router.get('/run', async (req: Request, res: Response) => {
   res.status(200).send();
 });
 
-router.get('/stop', async (req: Request, res: Response) => {
+router.post('/stop', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {
@@ -137,7 +138,7 @@ router.get('/available/services', (req: Request, res: Response) => {
 
 
 // With NPM
-router.get('/runNpm', async (req: Request, res: Response) => {
+router.post('/runNpm', async (req: Request, res: Response) => {
   const {toolName} = req.query;
   logger.info(`Request to run tool: ${toolName}`);
   try {
